@@ -64,6 +64,7 @@ _serve_with_streamlit()
 # ---------------------------------------------------------------------------
 
 import html
+from typing import Tuple
 
 import streamlit as st
 
@@ -285,25 +286,58 @@ def load_index() -> RAGIndex:
     return index
 
 
-def resolve_credentials() -> bool:
-    """Report whether a key is available, exporting it to the environment.
+def resolve_credentials() -> Tuple[bool, str]:
+    """Find an API key, export it to the environment, and say where it came from.
 
     The Anthropic client reads ANTHROPIC_API_KEY from os.environ, but on
-    Streamlit Community Cloud the key arrives through st.secrets instead.
-    Without copying it across, the sidebar would report generation "ready" and
-    every answer would then fail with an authentication error.
+    Streamlit Community Cloud the key arrives through st.secrets instead, so it
+    has to be copied across or generation fails to authenticate.
+
+    The second return value names the source, or the reason none was found --
+    "no key" and "a key exists but under a different name" need different
+    fixes, and a bare warning cannot tell them apart.
     """
     if os.environ.get("ANTHROPIC_API_KEY"):
-        return True
-    # st.secrets raises rather than returning empty when no secrets.toml exists.
+        return True, "environment"
+
+    # st.secrets raises rather than returning empty when no secrets file exists.
     try:
         key = st.secrets.get("ANTHROPIC_API_KEY")
+        names = list(st.secrets.keys())
     except Exception:
-        return False
+        return False, "no-secrets"
+
     if key:
         os.environ["ANTHROPIC_API_KEY"] = key
-        return True
-    return False
+        return True, "secrets"
+    return False, ("secrets-empty" if not names
+                   else "secrets-wrong-name:" + ", ".join(sorted(names))[:120])
+
+
+def credentials_help(reason: str) -> str:
+    """Turn a resolve_credentials() reason into instructions worth following."""
+    toml = ('```toml\nANTHROPIC_API_KEY = "sk-ant-..."\n```')
+    if reason.startswith("secrets-wrong-name:"):
+        found = reason.split(":", 1)[1]
+        return (
+            "A secrets file was found, but it has no `ANTHROPIC_API_KEY` entry "
+            f"— it defines: `{found}`.\n\nRename the entry to exactly "
+            "`ANTHROPIC_API_KEY`, at the top level (not nested under a "
+            f"`[section]` header):\n\n{toml}"
+        )
+    if reason == "secrets-empty":
+        return ("A secrets file was found but it is empty. On Streamlit Cloud, "
+                "open **⋮ → Settings → Secrets**, paste the line below, save, "
+                f"then **Reboot** the app:\n\n{toml}")
+    return (
+        "No API key found, so retrieval works but answers cannot be "
+        "generated.\n\n"
+        "- **Streamlit Cloud** — **⋮ → Settings → Secrets**, paste the line "
+        "below, save, then **Reboot** the app (secrets are not picked up until "
+        "a reboot).\n"
+        "- **Locally** — add the same line to `.env` in the project root.\n\n"
+        f"{toml}"
+    )
 
 
 def render_sources(sources, label: str, expanded: bool = False) -> None:
@@ -331,7 +365,7 @@ def render_sources(sources, label: str, expanded: bool = False) -> None:
 
 
 index = load_index()
-credentials = resolve_credentials()
+credentials, cred_reason = resolve_credentials()
 
 # --------------------------------------------------------------------------
 # Sidebar
@@ -403,11 +437,7 @@ if index is None:
     st.stop()
 
 if not credentials:
-    st.warning(
-        "`ANTHROPIC_API_KEY` is not set, so retrieval works but answers "
-        "cannot be generated. Add it to `.env`, set it in your shell, or put "
-        "it in `.streamlit/secrets.toml`."
-    )
+    st.warning(credentials_help(cred_reason))
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -485,8 +515,9 @@ if prompt:
                 {"role": "assistant", "content": answer, "sources": []}
             )
         elif not credentials:
-            answer = ("Retrieved the sources above, but `ANTHROPIC_API_KEY` is "
-                      "not set so no answer could be generated.")
+            answer = ("Retrieved the sources above, but no API key was found, "
+                      "so no answer could be generated. See the banner at the "
+                      "top of the page for how to set one.")
             st.markdown(answer)
             st.session_state.messages.append(
                 {"role": "assistant", "content": answer, "sources": sources}
