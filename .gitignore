@@ -7,8 +7,9 @@
 # where to obtain it.
 pregnancy_cvd_2025.pdf
 
-# Built artefacts: regenerate with `python biko.py --build`.
-chroma_pdf_rag/
+# The prebuilt Chroma index IS committed: it is what lets the deployed app
+# work without the PDF, which is not redistributed here. Regenerate it with
+# `python biko.py --build`.
 __pycache__/
 *.pyc
 

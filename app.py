@@ -285,14 +285,25 @@ def load_index() -> RAGIndex:
     return index
 
 
-def has_credentials() -> bool:
+def resolve_credentials() -> bool:
+    """Report whether a key is available, exporting it to the environment.
+
+    The Anthropic client reads ANTHROPIC_API_KEY from os.environ, but on
+    Streamlit Community Cloud the key arrives through st.secrets instead.
+    Without copying it across, the sidebar would report generation "ready" and
+    every answer would then fail with an authentication error.
+    """
     if os.environ.get("ANTHROPIC_API_KEY"):
         return True
     # st.secrets raises rather than returning empty when no secrets.toml exists.
     try:
-        return bool(st.secrets.get("ANTHROPIC_API_KEY"))
+        key = st.secrets.get("ANTHROPIC_API_KEY")
     except Exception:
         return False
+    if key:
+        os.environ["ANTHROPIC_API_KEY"] = key
+        return True
+    return False
 
 
 def render_sources(sources, label: str, expanded: bool = False) -> None:
@@ -320,7 +331,7 @@ def render_sources(sources, label: str, expanded: bool = False) -> None:
 
 
 index = load_index()
-credentials = has_credentials()
+credentials = resolve_credentials()
 
 # --------------------------------------------------------------------------
 # Sidebar

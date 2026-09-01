@@ -32,20 +32,19 @@ pip install -r requirements.txt
 cp .env.example .env        # then add your ANTHROPIC_API_KEY
 ```
 
-The guideline PDF is **not** included — it is copyrighted by the European
-Society of Cardiology. Download it from the ESC and save it in the repo root as
-`pregnancy_cvd_2025.pdf`.
-
-Build the index once (a few minutes; embeds locally):
-
-```bash
-python biko.py --build
-```
-
-Then run the app:
+The prebuilt Chroma index ships with the repo, so the app runs straight after
+clone — nothing to build:
 
 ```bash
 streamlit run app.py
+```
+
+The guideline PDF itself is **not** included; it is copyrighted by the European
+Society of Cardiology. You only need it to *rebuild* the index. Download it
+from the ESC, save it in the repo root as `pregnancy_cvd_2025.pdf`, and run:
+
+```bash
+python biko.py --build
 ```
 
 `app.py` re-launches itself under `streamlit run` with an interpreter that has
@@ -66,6 +65,17 @@ those chunks is *faithful*: that every substantive sentence carries a citation,
 that no citation points at a source that was not supplied, and that
 out-of-scope questions are refused rather than answered. Every question is a
 billed API call.
+
+## Deploying
+
+The app runs on Streamlit Community Cloud. Two things to know:
+
+- Set `ANTHROPIC_API_KEY` in the app's **Secrets** (not as an env var). The app
+  copies it into the environment for the Anthropic client.
+- Embeddings run locally via `sentence-transformers`, which pulls in torch and
+  downloads `bge-small` (~130MB) on each cold start. Loading the model plus the
+  index measures ~0.7GB resident, so memory is the binding constraint on small
+  instances.
 
 ## Files
 
