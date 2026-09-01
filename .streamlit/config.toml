@@ -1,0 +1,12 @@
+# Pinned so the app looks the same for everyone. Users can still override via
+# the hamburger menu -> Settings -> Theme.
+[theme]
+base = "light"
+primaryColor = "#C0334D"
+backgroundColor = "#FBF9FA"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#241F26"
+font = "sans serif"
+
+[server]
+headless = true
