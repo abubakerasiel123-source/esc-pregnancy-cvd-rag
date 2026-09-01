@@ -98,9 +98,24 @@ CSS = """
   --paper:     #FFFFFF;
 }
 
-html, body, [class*="st-"], button, input, textarea {
+/* Deliberately NOT [class*="st-"]. That selector also matches Streamlit's
+   Material icon spans, whose glyphs are font ligatures -- restyling them makes
+   the ligature name itself ("keyboard_arrow_right", "face") print as text on
+   top of the content. Inheritance from body covers the widgets anyway. */
+html, body, button, input, textarea, select,
+[data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
                Helvetica, Arial, sans-serif;
+}
+
+/* Belt and braces: wherever Streamlit draws a Material glyph, keep the icon
+   font, whatever else the cascade decides. */
+[data-testid="stIconMaterial"],
+[data-testid*="stChatMessageAvatar"] span,
+.material-icons, .material-icons-outlined,
+span[class*="material-symbols"] {
+  font-family: 'Material Symbols Rounded', 'Material Symbols Outlined',
+               'Material Icons' !important;
 }
 
 /* Wide layout, but text should not run the full width of a 27" display. */
@@ -264,6 +279,8 @@ HERO_ART = """
         fill="#6E6675" font-family="Inter, sans-serif">cited answer</text>
 </svg>
 """
+
+AVATARS = {"user": "\U0001F9D1\u200D\u2695\uFE0F", "assistant": "\U0001FAC0"}
 
 EXAMPLES = [
     "How should maternal risk be assessed before pregnancy?",
@@ -463,7 +480,7 @@ if not st.session_state.messages:
 # Replay history
 # --------------------------------------------------------------------------
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
+    with st.chat_message(msg["role"], avatar=AVATARS[msg["role"]]):
         st.markdown(msg["content"])
         if msg.get("sources"):
             render_sources(msg["sources"], f"{len(msg['sources'])} sources")
@@ -478,10 +495,10 @@ if not prompt:
 if prompt:
     chips_slot.empty()
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=AVATARS["user"]):
         st.markdown(prompt)
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=AVATARS["assistant"]):
         # Step 4: retrieve
         with st.spinner("Searching the guideline..."):
             results = index.search(prompt, k=k)
