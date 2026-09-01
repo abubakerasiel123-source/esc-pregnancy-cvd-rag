@@ -1,0 +1,18 @@
+# Credentials -- never commit.
+.env
+.streamlit/secrets.toml
+
+# Source document: the 2025 ESC guideline is copyrighted by the European
+# Society of Cardiology, so it is not redistributed here. See the README for
+# where to obtain it.
+pregnancy_cvd_2025.pdf
+
+# Built artefacts: regenerate with `python biko.py --build`.
+chroma_pdf_rag/
+__pycache__/
+*.pyc
+
+# Editor / backup noise.
+*.bak
+.DS_Store
+.vscode/
